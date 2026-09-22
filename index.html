@@ -56,12 +56,14 @@
     <button class="iconbtn" id="mobileStopBtn" type="button" aria-label="停止朗读">■</button>
   </div>
   <div class="toast" id="toast" role="status"></div>
+  <script src="opencc-t2cn.js"></script>
   <script>
     const $=s=>document.querySelector(s); const source=$('#source'),result=$('#result'),micBtn=$('#micBtn'),micLabel=$('#micLabel'),mobileMicBtn=$('#mobileMicBtn'),mobileMicLabel=$('#mobileMicLabel'),pulse=$('#pulse'),statusText=$('#statusText'),supportText=$('#supportText');
     const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
     let recognition=null,listening=false,finalText='',timer,commitTimer,restartTimer,manualStop=false,restartCount=0,lastRecognitionError='',starting=false;
     let committedSource=[],committedResult=[],pendingFinal='',liveInterim='',speechQueue=[],speaking=false,firstSpeechTriggered=false;
     const phrases=[
+      ['電話','电话'],['电话','电话'],['說話','说话'],['说话','说话'],['對話','对话'],['对话','对话'],['話題','话题'],['话题','话题'],
       ['唔该晒','非常感谢'],['唔该','麻烦了'],['多谢晒','非常感谢'],['冇问题','没问题'],['冇所谓','无所谓'],['冇办法','没办法'],['冇得','不能'],['冇','没有'],['唔系','不是'],['唔係','不是'],['唔会','不会'],['唔會','不会'],['唔使','不用'],['唔好','不要'],['唔得','不行'],['唔知','不知道'],['唔明','不明白'],['唔想','不想'],['唔要','不要'],['唔','不'],
       ['点解','为什么'],['點解','为什么'],['点去','怎么去'],['點去','怎么去'],['边度','哪里'],['邊度','哪里'],['呢度','这里'],['嗰度','那里'],['呢个','这个'],['呢個','这个'],['嗰个','那个'],['嗰個','那个'],['边个','谁'],['邊個','谁'],['几时','什么时候'],['幾時','什么时候'],['点样','怎么样'],['點樣','怎么样'],['几多钱','多少钱'],['幾多錢','多少钱'],['几多','多少'],['幾多','多少'],
       ['我哋','我们'],['你哋','你们'],['佢哋','他们'],['佢','他'],['而家','现在'],['听日','明天'],['琴日','昨天'],['今日','今天'],['朝早','早上'],['晏昼','下午'],['今晚','今天晚上'],['一阵','一会儿'],['即刻','马上'],
@@ -70,7 +72,8 @@
       ['系咪','是不是'],['係咪','是不是'],['仲有','还有'],['仲未','还没'],['啱啱','刚刚'],['梗系','当然'],['梗係','当然'],['紧','着'],['緊','着'],['咗','了'],['喇','了'],['啦','吧'],['啫','而已'],['㗎','的'],['嘅','的'],['嚟','来'],['喺','在']
     ].sort((a,b)=>b[0].length-a[0].length);
     const chars={'嚟':'来','係':'是','喺':'在','佢':'他','嘢':'东西','啲':'些','咁':'这么','咋':'而已','噉':'这样','點':'点','邊':'边','個':'个','時':'时','會':'会','緊':'着','飲':'饮','傾':'聊','諗':'想','話':'说','靚':'漂亮','閒':'闲','揸':'开','餸':'菜'};
-    function translate(text){let out=text.trim(),saved=[];phrases.forEach(([a,b])=>{if(out.includes(a)){const token=`\uE000${saved.length}\uE001`;out=out.split(a).join(token);saved.push([token,b])}});out=[...out].map(c=>chars[c]||c).join('');saved.forEach(([token,value])=>out=out.split(token).join(value));return out.replace(/([，。！？])\1+/g,'$1').replace(/[呀吖]\s*([，。！？]?)/g,'啊$1').replace(/了吗啊(?=[？?。！!]|$)/g,'了吗').replace(/\s+/g,' ').trim()}
+    const toSimplified=window.OpenCC&&OpenCC.Converter?OpenCC.Converter({from:'hk',to:'cn'}):text=>text;
+    function translate(text){let out=text.trim(),saved=[];phrases.forEach(([a,b])=>{if(out.includes(a)){const token=`\uE000${saved.length}\uE001`;out=out.split(a).join(token);saved.push([token,b])}});out=[...out].map(c=>chars[c]||c).join('');saved.forEach(([token,value])=>out=out.split(token).join(value));out=toSimplified(out);return out.replace(/([，。！？])\1+/g,'$1').replace(/[呀吖]\s*([，。！？]?)/g,'啊$1').replace(/了吗啊(?=[？?。！!]|$)/g,'了吗').replace(/\s+/g,' ').trim()}
     const ignoredSpeechChar=/[\s，。！？；、,.!?：:“”"'‘’（）()\-]/;
     function compactSpeech(text){return [...String(text||'')].filter(c=>!ignoredSpeechChar.test(c)).join('').toLowerCase()}
     function restAfterCompact(text,count){let seen=0,pos=0;for(const ch of String(text||'')){pos+=ch.length;if(!ignoredSpeechChar.test(ch)&&++seen===count)return text.slice(pos).trimStart()}return ''}
@@ -116,7 +119,7 @@
     function stopSpeech(){speechQueue=[];speaking=false;speechSynthesis.cancel();updateQueue();toast('已停止并清空朗读队列')}$('#translateBtn').onclick=()=>{const t=render(source.value);if(t&&$('#autoSpeak').checked)enqueueSpeech(t)};$('#speakBtn').onclick=()=>speak();$('#stopSpeakBtn').onclick=stopSpeech;$('#mobileStopBtn').onclick=stopSpeech;
     $('#clearBtn').onclick=()=>{source.value='';finalText='';pendingFinal='';liveInterim='';firstSpeechTriggered=false;committedSource=[];committedResult=[];speechQueue=[];speaking=false;render('');speechSynthesis.cancel();updateQueue();source.focus()};
     $('#copyBtn').onclick=async()=>{const t=translate(source.value);if(!t)return toast('暂无可复制内容');try{await navigator.clipboard.writeText(t);toast('已复制普通话译文')}catch(_){toast('复制失败，请手动选择')}};
-    document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{source.value=b.textContent;finalText=source.value;committedSource=[finalText];committedResult=[translate(finalText)];render(source.value)});window.__translatorTest={novelSpeechSuffix,compactSpeech,splitCompactPrefix};document.documentElement.dataset.speechSelfTest=[novelSpeechSuffix('嘉寶商業大廈','嘉寶商業大廈1980年落成')==='1980年落成',novelSpeechSuffix('四百幾尺这个单位正宗大鑊','四百幾尺这个单位正宗大鑊全装修')==='全装修',novelSpeechSuffix('5480','5480')==='',compactSpeech(splitCompactPrefix('嘉寶商業大廈1980年落成',11)[0]).length===11].every(Boolean)?'pass':'fail';updateQueue();
+    document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{source.value=b.textContent;finalText=source.value;committedSource=[finalText];committedResult=[translate(finalText)];render(source.value)});window.__translatorTest={novelSpeechSuffix,compactSpeech,splitCompactPrefix};document.documentElement.dataset.speechSelfTest=[novelSpeechSuffix('嘉寶商業大廈','嘉寶商業大廈1980年落成')==='1980年落成',novelSpeechSuffix('四百幾尺这个单位正宗大鑊','四百幾尺这个单位正宗大鑊全装修')==='全装修',novelSpeechSuffix('5480','5480')==='',compactSpeech(splitCompactPrefix('嘉寶商業大廈1980年落成',11)[0]).length===11].every(Boolean)?'pass':'fail';document.documentElement.dataset.simplifiedSelfTest=translate('今天介紹嘉寶商業大廈的單位內置分體冷氣，電話號碼')==='今天介绍嘉宝商业大厦的单位内置分体冷气，电话号码'?'pass':'fail';updateQueue();
   </script>
 </body>
 </html>
