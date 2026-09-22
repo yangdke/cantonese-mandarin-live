@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="theme-color" content="#07111f">
+  <meta name="description" content="粤语实时语音与文字转普通话工具">
+  <title>粤普同声 · 粤语转普通话</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2307111f'/%3E%3Cpath d='M15 20h24v8H25v8h14v8H25v8H15V20Z' fill='%235eead4'/%3E%3Cpath d='M43 19c6 5 7 20 0 26M50 13c11 11 11 29 0 40' fill='none' stroke='%23fbbf24' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root{--bg:#07111f;--panel:#0d1b2d;--panel2:#10243a;--line:#233b52;--ink:#eef7ff;--muted:#91a7ba;--mint:#5eead4;--mint2:#2dd4bf;--amber:#fbbf24;--danger:#fb7185;--shadow:0 24px 70px rgba(0,0,0,.32)}
+    *{box-sizing:border-box}html{font-size:16px}body{margin:0;min-height:100vh;background:radial-gradient(circle at 82% 5%,rgba(45,212,191,.12),transparent 31%),radial-gradient(circle at 5% 88%,rgba(251,191,36,.08),transparent 28%),var(--bg);color:var(--ink);font-family:Inter,"PingFang SC","Microsoft YaHei",system-ui,sans-serif}
+    button,textarea,select{font:inherit}button{cursor:pointer}button:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid rgba(94,234,212,.45);outline-offset:2px}
+    .shell{width:min(1180px,calc(100% - 32px));margin:auto;padding:24px 0 42px}.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}.brand{display:flex;align-items:center;gap:12px}.mark{display:grid;place-items:center;width:42px;height:42px;border:1px solid rgba(94,234,212,.3);border-radius:13px;background:rgba(94,234,212,.08);font-size:20px;font-weight:900;color:var(--mint)}.brand h1{margin:0;font-size:1.12rem}.brand p{margin:3px 0 0;color:var(--muted);font-size:.82rem}.privacy{display:flex;gap:8px;align-items:center;color:var(--muted);font-size:.82rem}.privacy i{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 12px var(--mint)}
+    .statusbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;color:var(--muted);font-size:.87rem}.status{display:flex;gap:8px;align-items:center}.pulse{width:8px;height:8px;border-radius:50%;background:#5b7085}.pulse.live{background:var(--danger);box-shadow:0 0 0 6px rgba(251,113,133,.12);animation:pulse 1.5s infinite}@keyframes pulse{50%{box-shadow:0 0 0 10px rgba(251,113,133,0)}}
+    .workspace{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:rgba(13,27,45,.92);box-shadow:var(--shadow);min-height:510px}.pane{padding:24px;display:flex;flex-direction:column;min-width:0}.pane+.pane{border-left:1px solid var(--line);background:linear-gradient(145deg,rgba(16,36,58,.96),rgba(9,25,42,.96))}.pane-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:17px}.lang{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1rem}.tag{color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 9px;font-size:.72rem;font-weight:700;letter-spacing:.04em}.mini{border:0;background:transparent;color:var(--muted);padding:6px 8px;border-radius:8px}.mini:hover{color:var(--ink);background:rgba(255,255,255,.06)}
+    textarea{width:100%;flex:1;min-height:250px;resize:none;border:0;background:transparent;color:var(--ink);font-size:1.3rem;line-height:1.8;padding:4px 0}textarea::placeholder{color:#587087}.result{flex:1;min-height:250px;font-size:1.3rem;line-height:1.8;white-space:pre-wrap;overflow-wrap:anywhere}.result.empty{color:#587087}.interim{color:#71879a}.divider{height:1px;background:var(--line);margin:18px 0}
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.mic{display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;border:0;border-radius:14px;padding:0 19px;background:var(--mint);color:#03201d;font-weight:900;box-shadow:0 8px 24px rgba(45,212,191,.16)}.mic:hover{background:#76f1df}.mic.recording{background:var(--danger);color:white}.primary{min-height:48px;border:1px solid var(--line);border-radius:14px;padding:0 17px;background:#16304b;color:var(--ink);font-weight:800}.primary:hover{border-color:#42617e}.iconbtn{width:48px;height:48px;border:1px solid var(--line);border-radius:14px;background:transparent;color:var(--ink);font-size:1.15rem}.iconbtn.active{color:#03201d;background:var(--amber);border-color:var(--amber)}
+    .wave{display:flex;align-items:center;gap:3px;height:30px;margin-left:auto;opacity:.4}.wave span{width:3px;height:6px;background:var(--mint);border-radius:4px}.recording+.wave{opacity:1}.recording+.wave span{animation:wave .85s ease-in-out infinite alternate}.wave span:nth-child(2){animation-delay:.1s}.wave span:nth-child(3){animation-delay:.2s}.wave span:nth-child(4){animation-delay:.3s}.wave span:nth-child(5){animation-delay:.4s}@keyframes wave{to{height:25px}}
+    .opts{margin-top:16px;display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:.82rem}.check{display:flex;align-items:center;gap:7px}.check input{accent-color:var(--mint)}
+    .examples{margin-top:22px}.examples-title{color:var(--muted);font-size:.8rem;margin-bottom:9px}.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.025);color:#b8c8d6;padding:8px 12px;font-size:.82rem}.chip:hover{border-color:var(--mint);color:var(--mint)}
+    .note{display:grid;grid-template-columns:auto 1fr;gap:10px;margin-top:18px;padding:14px 16px;border:1px solid rgba(251,191,36,.18);border-radius:14px;background:rgba(251,191,36,.045);color:#b9c7d3;font-size:.82rem;line-height:1.55}.note b{color:var(--amber)}
+    .mobile-dock{display:none}
+    .toast{position:fixed;left:50%;bottom:25px;transform:translate(-50%,20px);padding:11px 16px;border-radius:12px;background:#effdfb;color:#082720;font-weight:800;opacity:0;pointer-events:none;transition:.25s;box-shadow:var(--shadow)}.toast.show{opacity:1;transform:translate(-50%,0)}
+    @media(max-width:760px){
+      body{padding-bottom:calc(88px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#07111f,#081827)}
+      .shell{width:100%;max-width:620px;padding:12px 10px 20px}.privacy{display:none}.topbar{margin-bottom:10px;padding:0 3px}.mark{width:38px;height:38px;border-radius:12px}.brand h1{font-size:1.03rem}.brand p{font-size:.78rem}
+      .statusbar{margin:0 3px 9px;font-size:.82rem}.workspace{grid-template-columns:1fr;min-height:0;border-radius:20px}.pane{padding:17px 18px}.pane+.pane{border-left:0;border-top:1px solid var(--line)}.pane-head{margin-bottom:10px}.mini{min-height:44px;min-width:52px;font-size:.9rem}
+      textarea,.result{min-height:132px;font-size:1.08rem;line-height:1.7}.result{min-height:145px}.divider{margin:12px 0}.wave,#micBtn{display:none}.controls{gap:9px}.controls>*{flex:1}.primary,.iconbtn{min-height:50px}.iconbtn{flex:0 0 50px}.opts{margin-top:12px;gap:9px 13px;font-size:.84rem}.check{min-height:28px}.check input{width:17px;height:17px}.examples{margin-top:16px}.chip{min-height:44px;padding:9px 13px}.note{font-size:.8rem;margin-top:14px;padding:12px 13px}
+      .mobile-dock{position:fixed;display:grid;grid-template-columns:1fr 54px;gap:9px;z-index:20;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));bottom:calc(10px + env(safe-area-inset-bottom));padding:8px;border:1px solid rgba(94,234,212,.23);border-radius:20px;background:rgba(7,17,31,.88);box-shadow:0 16px 48px rgba(0,0,0,.46);backdrop-filter:blur(18px)}.mobile-dock .mic{min-height:58px;border-radius:15px;font-size:1rem}.mobile-dock .iconbtn{width:54px;height:58px;border-radius:15px;background:#142a42}
+    }
+    @media(max-width:370px){.pane{padding:15px}.opts{display:grid;grid-template-columns:1fr 1fr}.opts #queueState{grid-column:1/-1}.brand p{display:none}}
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand"><div class="mark">粤</div><div><h1>粤普同声</h1><p>粤语实时转普通话</p></div></div>
+      <div class="privacy"><i></i>语音默认只在浏览器中处理</div>
+    </header>
+    <div class="statusbar"><div class="status"><span class="pulse" id="pulse"></span><span id="statusText">准备就绪</span></div><span id="supportText">正在检测语音支持…</span></div>
+    <section class="workspace" aria-label="粤语转普通话工作区">
+      <div class="pane">
+        <div class="pane-head"><div class="lang">粤语 <span class="tag">广东话</span></div><button class="mini" id="clearBtn" type="button">清空</button></div>
+        <textarea id="source" aria-label="粤语输入" placeholder="输入粤语，或者按下麦克风开始讲…" spellcheck="false"></textarea>
+        <div class="divider"></div>
+        <div class="controls">
+          <button class="mic" id="micBtn" type="button"><span>●</span><span id="micLabel">开始说粤语</span></button>
+          <div class="wave" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+          <button class="primary" id="translateBtn" type="button">立即翻译</button>
+        </div>
+        <div class="opts"><label class="check"><input id="continuous" type="checkbox" checked> 连续聆听</label><label class="check"><input id="autoSpeak" type="checkbox" checked> 自动朗读结果</label><span id="queueState">逐句排队：空闲</span></div>
+      </div>
+      <div class="pane">
+        <div class="pane-head"><div class="lang">普通话 <span class="tag">简体中文</span></div><button class="mini" id="copyBtn" type="button">复制</button></div>
+        <div id="result" class="result empty" aria-live="polite">翻译结果会实时显示在这里</div>
+        <div class="divider"></div>
+        <div class="controls">
+          <button class="primary" id="speakBtn" type="button">▶ 朗读普通话</button>
+          <button class="iconbtn" id="stopSpeakBtn" type="button" title="停止朗读" aria-label="停止朗读">■</button>
+        </div>
+        <div class="examples">
+          <div class="examples-title">试试这些粤语</div>
+          <div class="chips"><button class="chip">唔该，呢度点去地铁站？</button><button class="chip">我哋听日再倾啦</button><button class="chip">佢而家返紧工</button></div>
+        </div>
+        <div class="note"><b>提示</b><span>本工具使用浏览器自带语音识别，不需要 API 充值。手机请优先使用 Chrome 或 Edge，并允许麦克风权限；当前内置浏览器不支持时，请复制网址到手机浏览器打开。</span></div>
+      </div>
+    </section>
+  </main>
+  <div class="mobile-dock" aria-label="手机快捷控制">
+    <button class="mic" id="mobileMicBtn" type="button"><span>●</span><span id="mobileMicLabel">开始说粤语</span></button>
+    <button class="iconbtn" id="mobileStopBtn" type="button" aria-label="停止朗读">■</button>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <script>
+    const $=s=>document.querySelector(s); const source=$('#source'),result=$('#result'),micBtn=$('#micBtn'),micLabel=$('#micLabel'),mobileMicBtn=$('#mobileMicBtn'),mobileMicLabel=$('#mobileMicLabel'),pulse=$('#pulse'),statusText=$('#statusText'),supportText=$('#supportText');
+    const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+    let recognition=null,listening=false,finalText='',timer,commitTimer,restartTimer,manualStop=false,restartCount=0,lastRecognitionError='',starting=false;
+    let committedSource=[],committedResult=[],pendingFinal='',speechQueue=[],speaking=false;
+    const phrases=[
+      ['唔该晒','非常感谢'],['唔该','麻烦了'],['多谢晒','非常感谢'],['冇问题','没问题'],['冇所谓','无所谓'],['冇办法','没办法'],['冇得','不能'],['冇','没有'],['唔系','不是'],['唔係','不是'],['唔会','不会'],['唔會','不会'],['唔使','不用'],['唔好','不要'],['唔得','不行'],['唔知','不知道'],['唔明','不明白'],['唔想','不想'],['唔要','不要'],['唔','不'],
+      ['点解','为什么'],['點解','为什么'],['点去','怎么去'],['點去','怎么去'],['边度','哪里'],['邊度','哪里'],['呢度','这里'],['嗰度','那里'],['呢个','这个'],['呢個','这个'],['嗰个','那个'],['嗰個','那个'],['边个','谁'],['邊個','谁'],['几时','什么时候'],['幾時','什么时候'],['点样','怎么样'],['點樣','怎么样'],['几多钱','多少钱'],['幾多錢','多少钱'],['几多','多少'],['幾多','多少'],
+      ['我哋','我们'],['你哋','你们'],['佢哋','他们'],['佢','他'],['而家','现在'],['听日','明天'],['琴日','昨天'],['今日','今天'],['朝早','早上'],['晏昼','下午'],['今晚','今天晚上'],['一阵','一会儿'],['即刻','马上'],
+      ['返紧工','正在上班'],['返緊工','正在上班'],['返工','上班'],['收工','下班'],['返屋企','回家'],['屋企','家'],['食咗饭未','吃饭了吗'],['食咗飯未','吃饭了吗'],['食饭','吃饭'],['食飯','吃饭'],['飲茶','喝茶'],['饮茶','喝茶'],['倾偈','聊天'],['傾偈','聊天'],['倾下','聊聊'],['傾下','聊聊'],['倾','聊'],['傾','聊'],['讲嘢','说话'],['講嘢','说话'],['睇唔到','看不到'],['睇下','看一下'],['睇','看'],['听唔到','听不到'],['聽唔到','听不到'],['揾','找'],['搵','找'],['拎','拿'],['畀','给'],['俾','给'],['话','说'],['話','说'],['谂','想'],['諗','想'],['知唔知','知不知道'],
+      ['有冇','有没有'],['得唔得','行不行'],['可唔可以','能不能'],['好攰','很累'],['好靓','很漂亮'],['好正','很棒'],['得闲','有空'],['得閒','有空'],['等阵','等会儿'],['等陣','等会儿'],['一齐','一起'],['一齊','一起'],['搞掂','办妥'],['快啲','快点'],['慢啲','慢点'],['平啲','便宜一点'],['细路','小孩'],['靓仔','帅哥'],['靓女','美女'],['巴士','公交车'],['的士','出租车'],['雪柜','冰箱'],['冷气','空调'],['冲凉','洗澡'],['埋单','结账'],['落雨','下雨'],['落车','下车'],['行路','走路'],['揸车','开车'],
+      ['系咪','是不是'],['係咪','是不是'],['仲有','还有'],['仲未','还没'],['啱啱','刚刚'],['梗系','当然'],['梗係','当然'],['紧','着'],['緊','着'],['咗','了'],['喇','了'],['啦','吧'],['啫','而已'],['㗎','的'],['嘅','的'],['嚟','来'],['喺','在']
+    ].sort((a,b)=>b[0].length-a[0].length);
+    const chars={'嚟':'来','係':'是','喺':'在','佢':'他','嘢':'东西','啲':'些','咁':'这么','咋':'而已','噉':'这样','點':'点','邊':'边','個':'个','時':'时','會':'会','緊':'着','飲':'饮','傾':'聊','諗':'想','話':'说','靚':'漂亮','閒':'闲','揸':'开','餸':'菜'};
+    function translate(text){let out=text.trim(),saved=[];phrases.forEach(([a,b])=>{if(out.includes(a)){const token=`\uE000${saved.length}\uE001`;out=out.split(a).join(token);saved.push([token,b])}});out=[...out].map(c=>chars[c]||c).join('');saved.forEach(([token,value])=>out=out.split(token).join(value));return out.replace(/([，。！？])\1+/g,'$1').replace(/[呀吖]\s*([，。！？]?)/g,'啊$1').replace(/了吗啊(?=[？?。！!]|$)/g,'了吗').replace(/\s+/g,' ').trim()}
+    function render(text,interim=''){const translated=translate(text); if(!translated&&!interim){result.textContent='翻译结果会实时显示在这里';result.className='result empty';return ''} result.className='result'; result.innerHTML='';result.append(document.createTextNode(translated));if(interim){const s=document.createElement('span');s.className='interim';s.textContent=(translated?' ':'')+translate(interim);result.append(s)}return translated}
+    function updateQueue(){const n=speechQueue.length+(speaking?1:0);$('#queueState').textContent=n?`逐句排队：${n} 句待朗读`:'逐句排队：空闲';if(!listening)statusText.textContent=speaking?'正在朗读普通话':n?'等待朗读':'准备就绪'}
+    function pumpSpeech(){if(speaking||!speechQueue.length){updateQueue();return}const text=speechQueue.shift();speaking=true;updateQueue();const u=new SpeechSynthesisUtterance(text);u.lang='zh-CN';u.rate=.94;const voices=speechSynthesis.getVoices();u.voice=voices.find(v=>/zh-CN/i.test(v.lang))||voices.find(v=>/^zh/i.test(v.lang))||null;u.onend=u.onerror=()=>{speaking=false;updateQueue();pumpSpeech()};speechSynthesis.speak(u)}
+    function enqueueSpeech(text){if(!text)return;speechQueue.push(text);updateQueue();pumpSpeech()}
+    function speak(text=translate(source.value)){if(!text)return toast('暂无可朗读内容');enqueueSpeech(text)}
+    function takePendingChunk(force=false){const chars=[...pendingFinal.trimStart()];if(!chars.length)return null;let cut=-1;for(let i=0;i<Math.min(11,chars.length);i++){if(/[，。！？；,.!?;]/.test(chars[i])){cut=i+1;break}}if(cut<0){if(chars.length<11&&!force)return null;cut=force?chars.length:11}const raw=chars.slice(0,cut).join('').trim();pendingFinal=chars.slice(cut).join('').trimStart();return raw||null}
+    function commitChunk(raw){if(!raw)return;committedSource.push(raw);const translated=translate(raw);committedResult.push(translated);finalText=committedSource.join('\n');source.value=[finalText,pendingFinal].filter(Boolean).join('\n');render([...committedResult,pendingFinal?translate(pendingFinal):''].filter(Boolean).join('\n'));if(translated&&$('#autoSpeak').checked)enqueueSpeech(translated)}
+    function commitSentence(force=true){clearTimeout(commitTimer);let raw;while((raw=takePendingChunk(force)))commitChunk(raw)}
+    function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>t.classList.remove('show'),1700)}
+    function setListening(on){listening=on;[micBtn,mobileMicBtn].forEach(b=>b.classList.toggle('recording',on));pulse.classList.toggle('live',on);micLabel.textContent=mobileMicLabel.textContent=on?'正在听…点击停止':'开始说粤语';statusText.textContent=on?'正在识别粤语':speaking?'正在朗读普通话':'准备就绪'}
+    const recognitionMessages={
+      'not-allowed':'请允许此网站使用麦克风后再试',
+      'service-not-allowed':'当前内置浏览器没有提供语音识别服务，请用手机 Chrome 或 Edge 打开',
+      'audio-capture':'没有检测到可用的麦克风',
+      'language-not-supported':'当前浏览器不支持粤语识别',
+      'network':'语音服务连接失败，请检查网络或改用手机 Chrome、Edge',
+      'bad-grammar':'粤语识别服务配置异常'
+    };
+    function safeRecognitionStart(){if(!recognition||manualStop||!listening||starting)return;starting=true;try{recognition.start()}catch(e){starting=false;if(e.name!=='InvalidStateError'){manualStop=true;setListening(false);toast('无法启动麦克风，请刷新后重试')}}}
+    function scheduleRestart(){if(!listening||manualStop||!$('#continuous').checked)return setListening(false);const delay=lastRecognitionError==='network'?Math.min(5000,700*Math.pow(1.7,restartCount)):260;clearTimeout(restartTimer);restartTimer=setTimeout(safeRecognitionStart,delay)}
+    async function ensureMicPermission(){if(!navigator.mediaDevices?.getUserMedia)return true;try{const stream=await navigator.mediaDevices.getUserMedia({audio:true});stream.getTracks().forEach(track=>track.stop());return true}catch(e){supportText.textContent='麦克风权限未开启';toast(e.name==='NotAllowedError'?'请在浏览器设置中允许麦克风权限':'没有检测到可用的麦克风');return false}}
+    if(SpeechRecognition){supportText.textContent='浏览器粤语识别可用';recognition=new SpeechRecognition();recognition.lang='zh-HK';recognition.interimResults=true;recognition.continuous=false;recognition.maxAlternatives=1;
+      recognition.onstart=()=>{starting=false;statusText.textContent='正在连接麦克风…'};
+      recognition.onaudiostart=()=>{supportText.textContent='麦克风已连接';statusText.textContent='正在听粤语…'};
+      recognition.onspeechstart=()=>{statusText.textContent='正在识别粤语';restartCount=0;lastRecognitionError=''};
+      recognition.onresult=e=>{restartCount=0;lastRecognitionError='';let interim='';for(let i=e.resultIndex;i<e.results.length;i++){const t=e.results[i][0].transcript.trim();if(e.results[i].isFinal)pendingFinal+=(pendingFinal?' ':'')+t;else interim+=(interim?' ':'')+t}commitSentence(false);const shown=[...committedSource,pendingFinal,interim].filter(Boolean).join('\n');source.value=shown;render([...committedResult,pendingFinal?translate(pendingFinal):''].filter(Boolean).join('\n'),interim);clearTimeout(commitTimer);if(pendingFinal)commitTimer=setTimeout(()=>commitSentence(true),850)};
+      recognition.onerror=e=>{starting=false;lastRecognitionError=e.error;if(e.error==='aborted'&&manualStop)return;if(e.error==='no-speech'&&listening&&!manualStop){statusText.textContent='还没听到声音，继续聆听…';return}if(e.error==='network'&&listening&&!manualStop&&restartCount<5){restartCount++;statusText.textContent=`语音服务重连中（${restartCount}/5）…`;supportText.textContent='浏览器语音服务暂时断开';return}manualStop=true;clearTimeout(restartTimer);setListening(false);supportText.textContent='浏览器语音识别不可用';toast(recognitionMessages[e.error]||`语音识别失败：${e.error}`)};
+      recognition.onend=()=>{starting=false;commitSentence(true);scheduleRestart()};
+    }else{supportText.textContent='此浏览器不支持语音识别';[micBtn,mobileMicBtn].forEach(b=>b.classList.add('unsupported'))}
+    async function toggleListening(){if(!recognition){toast('请复制网址到手机 Chrome 或 Edge 打开');return}if(listening){manualStop=true;listening=false;starting=false;clearTimeout(restartTimer);try{recognition.stop()}catch(_){}setListening(false);return}if(!await ensureMicPermission())return;const existing=source.value.trim();committedSource=existing?[existing]:[];committedResult=existing?[translate(existing)]:[];pendingFinal='';manualStop=false;restartCount=0;lastRecognitionError='';setListening(true);safeRecognitionStart()}micBtn.onclick=toggleListening;mobileMicBtn.onclick=toggleListening;
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&listening&&!manualStop)scheduleRestart()});
+    let debounce;source.addEventListener('input',()=>{finalText=source.value;committedSource=finalText?[finalText]:[];committedResult=finalText?[translate(finalText)]:[];clearTimeout(debounce);debounce=setTimeout(()=>render(source.value),180)});
+    function stopSpeech(){speechQueue=[];speaking=false;speechSynthesis.cancel();updateQueue();toast('已停止并清空朗读队列')}$('#translateBtn').onclick=()=>{const t=render(source.value);if(t&&$('#autoSpeak').checked)enqueueSpeech(t)};$('#speakBtn').onclick=()=>speak();$('#stopSpeakBtn').onclick=stopSpeech;$('#mobileStopBtn').onclick=stopSpeech;
+    $('#clearBtn').onclick=()=>{source.value='';finalText='';pendingFinal='';committedSource=[];committedResult=[];speechQueue=[];speaking=false;render('');speechSynthesis.cancel();updateQueue();source.focus()};
+    $('#copyBtn').onclick=async()=>{const t=translate(source.value);if(!t)return toast('暂无可复制内容');try{await navigator.clipboard.writeText(t);toast('已复制普通话译文')}catch(_){toast('复制失败，请手动选择')}};
+    document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{source.value=b.textContent;finalText=source.value;committedSource=[finalText];committedResult=[translate(finalText)];render(source.value)});updateQueue();
+  </script>
+</body>
+</html>
