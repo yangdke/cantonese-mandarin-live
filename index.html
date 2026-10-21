@@ -23,6 +23,7 @@
     @media(max-width:640px){body{padding-bottom:calc(86px + env(safe-area-inset-bottom));background:linear-gradient(180deg,#fff8ef 0%,#fff2e5 56%,#fff8f1 100%)}.shell{width:100%;max-width:620px;padding:0 0 112px}.hero{grid-template-columns:74px 1fr;gap:12px;min-height:128px;padding:8px 10px 10px;border-radius:0 0 22px 22px;background-position:center calc(100% - 8px)}.logo-wrap{width:72px;height:72px;padding:4px}.eyebrow{padding:4px 9px;font-size:.66rem}.hero h1{margin:6px 0 3px;font-size:1.25rem}.hero p{font-size:.74rem}.statusbar{margin:0 14px 10px;padding:8px 11px;font-size:.76rem}.stack{gap:13px;margin:0 10px}.card{border-radius:22px}.translator-card,.result-card,.extras-card{padding:17px}.language-row{grid-template-columns:minmax(0,1fr) 46px minmax(0,1fr);gap:8px;padding:8px 10px;font-size:1rem;margin-bottom:12px}.swap{width:42px;height:38px;font-size:1.35rem}.lang small{display:none}.result-heading{gap:8px}.output-toggle button{min-width:29px;height:27px;padding:0 8px;font-size:.74rem}textarea{min-height:142px;padding:18px 60px 18px 17px;font-size:1rem}.mic-inline{display:none}.primary{min-height:52px;border-radius:15px}.opts{font-size:.84rem;gap:10px}.result-shell{min-height:135px;padding:17px}.result{font-size:1rem}.iconbtn{height:52px;min-width:52px}.actionbar .pausebtn{width:52px;min-width:52px;height:52px}.extras-card{padding-bottom:18px}.chip{min-height:44px}.note{padding:12px;font-size:.78rem}.mobile-dock{position:fixed;display:grid;grid-template-columns:1fr 58px;gap:9px;z-index:30;left:max(10px,env(safe-area-inset-left));right:max(10px,env(safe-area-inset-right));bottom:calc(10px + env(safe-area-inset-bottom));padding:8px;border:1px solid rgba(255,146,82,.32);border-radius:20px;background:rgba(255,250,245,.92);box-shadow:0 15px 40px rgba(124,62,8,.22);backdrop-filter:blur(18px)}.mobile-dock .mic{min-height:58px;border-radius:15px;font-size:1rem}.mobile-dock .iconbtn{height:58px;border-radius:15px;background:white}.mobile-dock .pausebtn{width:58px;min-width:58px;background:linear-gradient(90deg,var(--orange),var(--orange2))}}
     @media(max-width:370px){.hero{grid-template-columns:82px 1fr}.logo-wrap{width:80px;height:80px}.hero h1{font-size:1.35rem}.translator-card,.result-card,.extras-card{padding:15px}.opts{grid-template-columns:1fr}.opts #queueState{grid-column:auto}}
     .statusbar{gap:10px}.status{min-width:0;flex:1}#statusText{line-height:1.4;overflow-wrap:anywhere}#supportText{max-width:46%;text-align:right;line-height:1.4}
+    .mic-issue{margin:0 14px 14px;padding:14px;border:1px solid #f7cfad;border-radius:16px;background:#fff2e2;font-size:.85rem;line-height:1.6;color:#79452a;overflow-wrap:anywhere}.mic-issue[hidden]{display:none}.mic-issue p{margin:0 0 9px}.mic-issue button{border:0;border-radius:10px;background:var(--orange);color:white;padding:9px 14px;font-weight:800}
   </style>
 </head>
 <body>
@@ -32,6 +33,7 @@
       <div><span class="eyebrow">入港通旗下</span><h1><strong>港言港语</strong> 粤语翻译</h1><p>听得懂 · 说得出 · 更融入香港</p></div>
     </header>
     <div class="statusbar"><div class="status"><span class="pulse" id="pulse"></span><span id="statusText">准备就绪</span></div><span id="supportText">正在检测语音支持…</span></div>
+    <div class="mic-issue" id="micIssue" role="status" hidden><p id="micIssueText"></p><button id="retryMicBtn" type="button">重试连接</button></div>
     <div class="stack" aria-label="粤语转普通话工作区">
       <section class="card translator-card">
         <div class="language-row"><div class="lang"><span class="lang-dot" aria-hidden="true"></span><span id="sourceLanguage">粤语</span><small id="sourceHint">广东话</small></div><button class="swap" id="swapBtn" type="button" aria-label="交换翻译方向" title="交换翻译方向">⇄</button><div class="lang target-lang"><span id="targetLanguage">普通话</span><span class="lang-dot" aria-hidden="true"></span></div></div>
@@ -58,7 +60,7 @@
   <div class="toast" id="toast" role="status"></div>
   <script src="opencc-full.js"></script>
   <script src="streaming-transcript.js"></script>
-  <script src="continuous-audio.js"></script>
+  <script src="continuous-audio.js?v=20261021-mic2"></script>
   <script>
     const $=s=>document.querySelector(s); const source=$('#source'),result=$('#result'),micBtn=$('#micBtn'),micLabel=$('#micLabel'),mobileMicBtn=$('#mobileMicBtn'),mobileMicLabel=$('#mobileMicLabel'),pulse=$('#pulse'),statusText=$('#statusText'),supportText=$('#supportText'),swapBtn=$('#swapBtn'),sourceLanguage=$('#sourceLanguage'),targetLanguage=$('#targetLanguage'),sourceHint=$('#sourceHint'),outputToggle=$('#outputToggle'),examplesTitle=$('#examplesTitle');
     let listening=false,preparing=false,timer,levelTimer;
@@ -96,7 +98,7 @@
     function splitCompactPrefix(text,count){let seen=0,pos=0;for(const ch of String(text||'')){pos+=ch.length;if(!ignoredSpeechChar.test(ch)&&++seen===count)return [text.slice(0,pos).trim(),text.slice(pos).trimStart()]}return [text.trim(),'']}
     function render(text,interim=''){const translated=translate(text);if(!translated&&!interim){result.textContent='翻译结果会实时显示在这里';result.className='result empty';return ''}result.className='result';result.innerHTML='';result.append(document.createTextNode(translated));if(interim){const s=document.createElement('span');s.className='interim';s.textContent=(translated?' ':'')+translate(interim);result.append(s)}return translated}
     function outputName(){return outputMode==='cantonese'?'粤语':outputMode==='traditional'?'繁体普通话':'简体普通话'}
-    function updateQueue(){const n=speechQueue.length+(speaking?1:0);$('#queueState').textContent=n?`逐句排队：${n} 句待朗读`:'逐句排队：空闲';if(listening&&!preparing)statusText.textContent=speaking?'持续收音·同时朗读':'持续收音·等待说话';else if(!listening)statusText.textContent=speaking?`正在朗读${outputMode==='cantonese'?'粤语':'普通话'}`:n?'等待朗读':'准备就绪'}
+    function updateQueue(){const n=speechQueue.length+(speaking?1:0);$('#queueState').textContent=n?`逐句排队：${n} 句待朗读`:'逐句排队：空闲';if(listening&&!preparing){if(audio.recovering)statusText.textContent='正在恢复麦克风连接…';else if(audio.context?.state!=='running'||audio.media?.getAudioTracks().some(track=>track.muted))audio.reportInputState();else statusText.textContent=speaking?'持续收音·同时朗读':'持续收音·等待说话';}else if(!listening)statusText.textContent=speaking?`正在朗读${outputMode==='cantonese'?'粤语':'普通话'}`:n?'等待朗读':'准备就绪'}
     function findCantoneseVoice(voices=speechSynthesis.getVoices()){return voices.find(v=>/^yue(?:[-_]|$)/i.test(v.lang)||/^zh[-_](?:HK|Hant[-_]HK)(?:[-_]|$)/i.test(v.lang))||voices.find(v=>/cantonese|yue|粵語|粤语|廣東話|广东话|hong\s*kong|香港/i.test(`${v.name} ${v.lang}`))||null}
     function findMandarinVoice(voices=speechSynthesis.getVoices()){return voices.find(v=>/^zh[-_](?:CN|SG)(?:[-_]|$)/i.test(v.lang))||voices.find(v=>/mandarin|普通话|普通話|國語|国语/i.test(`${v.name} ${v.lang}`))||null}
     function cantoneseVoiceUnavailable(){clearTimeout(voiceRetryTimer);voiceRetryTimer=null;voiceRetryCount=0;speechQueue=[];speaking=false;updateQueue();toast('未检测到粤语语音。请在手机“文字转语音”设置中安装“粤语（香港）”后重试',4200)}
@@ -114,20 +116,24 @@
     function speak(text=translate(source.value)){if(!text)return toast('暂无可朗读内容');enqueueSpeech(text)}
     function toast(msg,duration=1700){const t=$('#toast');t.textContent=msg;t.classList.add('show');clearTimeout(timer);timer=setTimeout(()=>t.classList.remove('show'),duration)}
     function inputName(){return direction==='yue-to-zh'?'粤语':'普通话'}
+    function showMicIssue(message){$('#micIssueText').textContent=message;$('#micIssue').hidden=false;}
+    function microphoneError(error){clearTimeout(levelTimer);preparing=false;setListening(false);statusText.textContent='收音未连接';supportText.textContent='请查看下方提示';const messages={NotAllowedError:'麦克风权限未开启或被系统关闭。请在浏览器地址栏的网站权限及手机应用权限中允许麦克风，再重试。',NotReadableError:'麦克风暂时无法读取，可能被通话、录音或其他应用占用。请关闭占用后重试；如仍失败，请在系统 Chrome 或 Edge 浏览器中打开。',NotFoundError:'未找到可用麦克风。请检查手机麦克风或耳机是否可用。',OverconstrainedError:'当前设备不支持请求的音频设置，请断开蓝牙耳机后重试。'};const detail=messages[error.name]||error.message||'麦克风连接失败，请重试';showMicIssue(`${detail}（${error.code||error.name||'AUDIO_ERROR'}）`);toast('收音未连接，请查看页面上方的提示',2600);}
     function setListening(on){listening=on;[micBtn,mobileMicBtn].forEach(b=>b.classList.toggle('recording',on&&!preparing));pulse.classList.toggle('live',on&&!preparing);const label=on?'正在听…点击停止':`开始说${inputName()}`;micLabel.textContent=mobileMicLabel.textContent=label;[micBtn,mobileMicBtn].forEach(b=>b.setAttribute('aria-label',label));statusText.textContent=on?'持续收音·等待说话':speaking?`正在朗读${outputMode==='cantonese'?'粤语':'普通话'}`:'准备就绪'}
     function handleStreamResult(data){const update=transcript.push(data);if(source.value!==update.text){source.value=update.text;render(update.text)}if($('#autoSpeak').checked)update.speech.map(translate).filter(Boolean).forEach(enqueueSpeech);if(data.isFinal&&data.text&&!$('#continuous').checked&&listening)stopListeningForSwitch()}
     const audio=new ContinuousAudio({
       onResult:handleStreamResult,
       onStatus(info){
-        if(info.phase==='preparing'){preparing=true;statusText.textContent='正在准备本地语音识别…';micLabel.textContent=mobileMicLabel.textContent='准备中…点击取消';[micBtn,mobileMicBtn].forEach(b=>b.setAttribute('aria-label','准备中…点击取消'));supportText.textContent='首次约 250 MB，建议 Wi-Fi';}
+        if(info.phase==='preparing'){$('#micIssue').hidden=true;preparing=true;statusText.textContent='正在准备本地语音识别…';micLabel.textContent=mobileMicLabel.textContent='准备中…点击取消';[micBtn,mobileMicBtn].forEach(b=>b.setAttribute('aria-label','准备中…点击取消'));supportText.textContent='首次约 250 MB，建议 Wi-Fi';}
         else if(info.type==='progress'&&preparing){statusText.textContent=`正在准备语音文件 ${info.percent}%`;}
         else if(info.phase==='permission'){transcript=new StreamingTranscript(source.value.trim());statusText.textContent='正在连接麦克风…';}
-        else if(info.phase==='listening'){preparing=false;setListening(true);supportText.textContent='本地识别·收音不中断';}
-        else if(info.phase==='suspended'){statusText.textContent='收音已被系统挂起，请切回页面';}
+        else if(info.phase==='listening'){$('#micIssue').hidden=true;preparing=false;setListening(true);supportText.textContent='本地识别·收音不中断';}
+        else if(info.phase==='recovering'){clearTimeout(levelTimer);statusText.textContent='正在恢复麦克风连接…';supportText.textContent='仅尝试一次，不循环重连';}
+        else if(info.phase==='suspended'){clearTimeout(levelTimer);preparing=false;statusText.textContent='收音被系统暂停';supportText.textContent='请保持页面在前台';showMicIssue('音频被手机系统暂停。请返回此页面，点击“恢复收音”；无需重新下载语音文件。');$('#retryMicBtn').textContent='恢复收音';}
+        else if(info.phase==='muted'){clearTimeout(levelTimer);preparing=false;statusText.textContent='麦克风暂时被系统静音';supportText.textContent='连接保留，等待恢复';}
         else if(info.phase==='cache-warning'){supportText.textContent='缓存空间不足，下次需重新准备';}
       },
-      onLevel(level){if(!listening||preparing)return;if(level>.007){statusText.textContent=speaking?'正在识别·同时朗读':`正在识别${inputName()}`;clearTimeout(levelTimer);levelTimer=setTimeout(()=>{if(listening)statusText.textContent=speaking?'持续收音·同时朗读':'持续收音·等待说话'},450)}},
-      onError(error){preparing=false;setListening(false);supportText.textContent='收音已停止';toast(error.message,4000)}
+      onLevel(level){if(!listening||preparing||audio.recovering||audio.context?.state!=='running'||audio.media?.getAudioTracks().some(track=>track.muted))return;if(level>.007){statusText.textContent=speaking?'正在识别·同时朗读':`正在识别${inputName()}`;clearTimeout(levelTimer);levelTimer=setTimeout(()=>{if(listening)updateQueue()},450)}},
+      onError:microphoneError
     });
     const examples={
       'yue-to-zh':['唔该，呢度点去地铁站？','我哋听日再倾啦','佢而家返紧工'],
@@ -136,11 +142,12 @@
     function refreshOutputUi(){outputToggle.querySelectorAll('button').forEach(b=>{const active=b.dataset.mode===outputMode;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active))});const speakBtn=$('#speakBtn'),label=`朗读${outputMode==='cantonese'?'粤语':'普通话'}`;speakBtn.textContent=`▶ ${label}`;speakBtn.setAttribute('aria-label',outputMode==='cantonese'?`${label}，使用粤语香港语音`:label);speakBtn.title=outputMode==='cantonese'?'使用手机系统的粤语（香港）语音':'使用手机系统的普通话语音'}
     function refreshDirectionUi(){const reverse=direction==='zh-to-yue';sourceLanguage.textContent=reverse?'普通话':'粤语';targetLanguage.textContent=reverse?'粤语':'普通话';sourceHint.textContent=reverse?'中文':'广东话';source.setAttribute('aria-label',`${reverse?'普通话':'粤语'}输入`);source.placeholder=reverse?'请输入普通话内容…':'请输入要翻译的内容…';supportText.textContent='本地持续识别·免 API 充值';examplesTitle.textContent=reverse?'常用普通话短句':'常用粤语短句';document.querySelectorAll('.chip').forEach((b,i)=>b.textContent=examples[direction][i]);document.querySelector('.stack').setAttribute('aria-label',`${reverse?'普通话转粤语':'粤语转普通话'}工作区`);refreshOutputUi();setListening(false)}
     function selectOutput(mode,announce=true){if(!['simplified','traditional','cantonese'].includes(mode))return;outputMode=mode;refreshOutputUi();render(source.value);if(announce)toast(`结果已切换为${outputName()}`)}
-    function stopListeningForSwitch(){preparing=false;clearTimeout(levelTimer);setListening(false);return audio.stop()}
+    function stopListeningForSwitch(){preparing=false;clearTimeout(levelTimer);$('#micIssue').hidden=true;setListening(false);return audio.stop()}
     function cancelSpeechQueue(){speechGeneration++;clearTimeout(voiceRetryTimer);speechQueue=[];speaking=false;voiceRetryCount=0;speechSynthesis.cancel();updateQueue()}
     async function swapDirection(){swapBtn.disabled=true;try{await stopListeningForSwitch();const previous=translate(source.value);direction=direction==='yue-to-zh'?'zh-to-yue':'yue-to-zh';outputMode=direction==='yue-to-zh'?'simplified':'cantonese';source.value=previous;transcript=new StreamingTranscript(previous);refreshDirectionUi();render(source.value);cancelSpeechQueue();toast(direction==='zh-to-yue'?'已切换：普通话翻译成粤语':'已切换：粤语翻译成普通话')}finally{swapBtn.disabled=false}}
-    async function toggleListening(){if(listening||preparing){stopListeningForSwitch();return}preparing=true;setListening(true);try{const started=await audio.start();if(!started)return;}catch(error){if(error.message==='已取消准备')return;preparing=false;setListening(false);supportText.textContent='语音准备失败';toast(error.name==='NotAllowedError'?'请允许此网站使用麦克风后再试':error.message,4200)}}micBtn.onclick=toggleListening;mobileMicBtn.onclick=toggleListening;
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&audio.recording&&audio.context?.state==='suspended')audio.context.resume().catch(()=>toast('请点击麦克风重新开始收音'))});
+    async function toggleListening(){if(listening||preparing){stopListeningForSwitch();return}preparing=true;setListening(true);$('#retryMicBtn').textContent='重试连接';try{const started=await audio.start();if(!started)return;}catch(error){if(error.message==='已取消准备')return;microphoneError(error)}}micBtn.onclick=toggleListening;mobileMicBtn.onclick=toggleListening;
+    $('#retryMicBtn').onclick=async()=>{if(audio.recording){try{await audio.resume()}catch(error){showMicIssue(`暂时无法恢复收音，请停止后重新开始。（${error.name}）`)}}else await toggleListening()};
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&audio.recording&&['suspended','interrupted'].includes(audio.context?.state))audio.resume().catch(()=>showMicIssue('请点击“恢复收音”，恢复被手机暂停的音频。'))});
     let debounce;source.addEventListener('input',()=>{audio.reset();transcript=new StreamingTranscript(source.value);clearTimeout(debounce);debounce=setTimeout(()=>render(source.value),80)});
     function stopSpeech(){cancelSpeechQueue();toast('已停止朗读，收音继续')}$('#translateBtn').onclick=()=>{const t=render(source.value);if(t&&$('#autoSpeak').checked)enqueueSpeech(t)};$('#speakBtn').onclick=()=>speak();$('#stopSpeakBtn').onclick=stopSpeech;$('#mobileStopBtn').onclick=stopSpeech;
     $('#clearBtn').onclick=()=>{source.value='';transcript=new StreamingTranscript();audio.reset();cancelSpeechQueue();render('');source.focus()};

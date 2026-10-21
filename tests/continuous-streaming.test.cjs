@@ -2,8 +2,8 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {StreamingTranscript}=require('../streaming-transcript.js');
 const root=path.resolve(__dirname,'..');
 
-function harness({autoReady=true,autoDrain=true}={}){
-  const nodes=new Map(),workers=[],captures=[],spoken=[],tracks=[],timers=new Map();let now=0,id=0,mediaRequests=0;
+function harness({autoReady=true,autoDrain=true,sampleRate=48000,permission='granted',mediaError=null,endedOnOpen=false}={}){
+  const nodes=new Map(),workers=[],captures=[],contexts=[],constraints=[],spoken=[],tracks=[],timers=new Map();let now=0,id=0,mediaRequests=0;
   function node(){const classes=new Set();const item={textContent:'',value:'',checked:true,dataset:{},attributes:{},classList:{toggle(name,on){on?classes.add(name):classes.delete(name)},add:n=>classes.add(n),remove:n=>classes.delete(n)},setAttribute(k,v){this.attributes[k]=v},append(n){this.textContent+=n.textContent},addEventListener(){},focus(){},querySelectorAll(){return toggles}};Object.defineProperty(item,'innerHTML',{set(){item.textContent=''}});return item;}
   const toggles=['simplified','traditional','cantonese'].map(mode=>({...node(),dataset:{mode}})),chips=Array.from({length:3},node);
   const query=s=>{if(!nodes.has(s))nodes.set(s,node());return nodes.get(s)};
@@ -15,14 +15,14 @@ function harness({autoReady=true,autoDrain=true}={}){
     result(data){this.onmessage({data:{type:'result',session:1,epoch:0,segment:0,...data}})}
   }
   class AudioContext{
-    constructor(){this.sampleRate=16000;this.state='running';this.audioWorklet={addModule:async()=>{}};this.destination={};}
+    constructor(options){this.options=options;this.sampleRate=sampleRate;this.state='running';this.audioWorklet={addModule:async()=>{}};this.destination={};contexts.push(this);}
     async resume(){this.state='running'} async close(){this.state='closed'}
     createMediaStreamSource(){return {connect(){},disconnect(){}}}
   }
   class AudioWorkletNode{
     constructor(){this.port={};captures.push(this);}connect(){}disconnect(){this.disconnected=true}
   }
-  const navigator={mediaDevices:{async getUserMedia(){mediaRequests++;const track={stopped:false,stop(){this.stopped=true},addEventListener(){}};tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]};}}};
+  const navigator={permissions:{async query(){return {state:permission}}},mediaDevices:{async getUserMedia(request){mediaRequests++;constraints.push(request);if(mediaError)throw mediaError;const events=new Map();const track={stopped:false,readyState:endedOnOpen?'ended':'live',muted:false,stop(){this.stopped=true;this.readyState='ended'},addEventListener(name,fn){if(!events.has(name))events.set(name,new Set());events.get(name).add(fn)},removeEventListener(name,fn){events.get(name)?.delete(fn)},emit(name){if(name==='ended')this.readyState='ended';if(name==='mute')this.muted=true;if(name==='unmute')this.muted=false;for(const fn of [...events.get(name)||[]])fn()},getSettings(){return {sampleRate,channelCount:1}}};tracks.push(track);return {getTracks:()=>[track],getAudioTracks:()=>[track]};}}};
   const context=vm.createContext({document,navigator,Worker,AudioContext,AudioWorkletNode,queueMicrotask,
     SpeechRecognition:class{constructor(){throw new Error('legacy recognizer must never be started')}},
     speechSynthesis:{getVoices:()=>[{lang:'zh-CN',name:'Mandarin'},{lang:'zh-HK',name:'Cantonese'}],speak:u=>spoken.push(u),cancel(){},addEventListener(){}},
@@ -30,7 +30,7 @@ function harness({autoReady=true,autoDrain=true}={}){
   context.window=context;
   for(const file of ['opencc-full.js','streaming-transcript.js','continuous-audio.js'])vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),context);
   const inline=[...fs.readFileSync(path.join(root,'index.html'),'utf8').matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].at(-1)[1];vm.runInContext(inline,context);
-  return {query,workers,captures,tracks,spoken,context,get mediaRequests(){return mediaRequests},
+  return {query,workers,captures,contexts,constraints,tracks,spoken,context,get mediaRequests(){return mediaRequests},
     click:()=>query('#mobileMicBtn').onclick(),
     audio(samples=new Float32Array(1280)){captures.at(-1).port.onmessage({data:samples})},
     advance(ms){now+=ms;for(const [key,item]of [...timers])if(item.due<=now){timers.delete(key);item.fn()}},
@@ -128,4 +128,93 @@ test('finishing playback updates the status without changing microphone capture'
   const app=harness();await app.click();app.workers[0].result({text:'今日天气好好。',isFinal:true});app.spoken[0].onend();
   assert.equal(app.query('#statusText').textContent,'持续收音·等待说话');assert.equal(app.tracks[0].stopped,false);
   assert.equal(app.evaluate("translateCantoneseToMandarin('有无人知道呢度系点去')"),'有没有人知道这里怎么去');
+});
+
+const settle=()=>new Promise(resolve=>setImmediate(resolve));
+test('microphone and Web Audio use the native device rate, forwarded for worker resampling',async()=>{
+  for(const sampleRate of [44100,48000]){
+    const app=harness({sampleRate});await app.click();app.audio();
+    assert.equal(app.contexts[0].options.sampleRate,undefined);
+    assert.equal(app.constraints[0].audio.sampleRate,undefined);
+    assert.equal(app.workers[0].messages.at(-1).sampleRate,sampleRate);
+  }
+});
+test('an unexpected device end recovers once without resetting the recognizer or speech queue',async()=>{
+  const app=harness();await app.click();app.workers[0].result({text:'今日天气好好。',isFinal:true});
+  app.tracks[0].emit('ended');await settle();app.audio();
+  assert.equal(app.mediaRequests,2);assert.equal(app.evaluate('audio.recording'),true);
+  assert.equal(app.workers[0].messages.filter(m=>m.type==='start').length,1);
+  assert.equal(app.workers[0].messages.filter(m=>m.type==='stop').length,0);
+  assert.equal(app.spoken.length,1);assert.equal(app.contexts.length,1);
+  app.tracks[1].emit('ended');await settle();
+  assert.equal(app.mediaRequests,2);assert.equal(app.evaluate('audio.recording'),false);
+  assert.equal(app.query('#micIssue').hidden,false);assert.match(app.query('#micIssueText').textContent,/MIC_ENDED/);
+});
+test('late audio and ended events from the previous capture cannot affect a new session',async()=>{
+  const app=harness();await app.click();const lateAudio=app.captures[0].port.onmessage;
+  await app.click();await app.click();app.tracks[0].emit('ended');await settle();
+  const before=app.workers[0].messages.filter(m=>m.type==='audio').length;
+  lateAudio({data:new Float32Array(1280)});
+  assert.equal(app.workers[0].messages.filter(m=>m.type==='audio').length,before);
+  assert.equal(app.evaluate('audio.recording'),true);assert.equal(app.tracks[1].stopped,false);
+});
+test('temporary device mute does not reopen the microphone, and unmute restores listening',async()=>{
+  const app=harness();await app.click();app.tracks[0].emit('mute');
+  assert.match(app.query('#statusText').textContent,/暂时/);assert.equal(app.mediaRequests,1);
+  app.tracks[0].emit('unmute');assert.match(app.query('#statusText').textContent,/持续收音/);
+});
+test('revoked permission stops once with a persistent actionable message, without prompting in a loop',async()=>{
+  const app=harness({permission:'denied'});await app.click();app.tracks[0].emit('ended');await settle();
+  assert.equal(app.mediaRequests,1);assert.equal(app.query('#micIssue').hidden,false);
+  assert.match(app.query('#micIssueText').textContent,/权限/);assert.equal(app.evaluate('audio.recording'),false);
+});
+test('a microphone that is already ended never becomes falsely connected',async()=>{
+  const app=harness({endedOnOpen:true});await app.click();
+  assert.equal(app.evaluate('audio.recording'),false);assert.equal(app.query('#micIssue').hidden,false);
+  assert.match(app.query('#micIssueText').textContent,/MIC_ENDED/);
+});
+test('permission and busy-device failures have distinct persistent instructions',async()=>{
+  for(const [name,expected]of [['NotAllowedError',/权限/],['NotReadableError',/占用/]]){
+    const app=harness({mediaError:Object.assign(new Error('native error'),{name})});await app.click();
+    assert.equal(app.query('#micIssue').hidden,false);assert.match(app.query('#micIssueText').textContent,expected);
+    assert.equal(app.contexts[0].state,'closed');
+  }
+});
+test('interrupted audio resumes the same context and stream from the recovery button',async()=>{
+  const app=harness();await app.click();const ctx=app.contexts[0];ctx.state='interrupted';ctx.onstatechange();
+  assert.equal(app.query('#micIssue').hidden,false);await app.query('#retryMicBtn').onclick();
+  assert.equal(ctx.state,'running');assert.equal(app.mediaRequests,1);assert.equal(app.contexts.length,1);
+});
+test('a late getUserMedia rejection after cancel cannot stop the next successful session',async()=>{
+  const app=harness();let reject;
+  app.context.navigator.mediaDevices.getUserMedia=()=>new Promise((_,fail)=>{reject=fail});
+  const pending=app.click();await settle();await app.click();
+  app.context.navigator.mediaDevices.getUserMedia=async()=>({getTracks:()=>[],getAudioTracks:()=>[{readyState:'live',addEventListener(){},removeEventListener(){}}]});
+  await app.click();reject(Object.assign(new Error('late error'),{name:'NotAllowedError'}));await pending;
+  assert.equal(app.evaluate('audio.recording'),true);assert.equal(app.evaluate('listening'),true);
+  assert.equal(app.query('#micIssue').hidden,true);
+});
+test('device interruption while hidden stops without automatically reopening the microphone',async()=>{
+  const app=harness();await app.click();app.context.document.visibilityState='hidden';app.tracks[0].emit('ended');await settle();
+  assert.equal(app.mediaRequests,1);assert.equal(app.evaluate('audio.recording'),false);
+});
+test('capture worklet batches eighty milliseconds at the actual device sample rate',()=>{
+  for(const rate of [16000,44100,48000]){
+    const output=[];let Processor;
+    const ctx=vm.createContext({sampleRate:rate,AudioWorkletProcessor:class{constructor(){this.port={postMessage:data=>output.push(data)}}},registerProcessor:(_,value)=>{Processor=value}});
+    vm.runInContext(fs.readFileSync(path.join(root,'capture-worklet.js'),'utf8'),ctx);
+    const processor=new Processor();const data=new Float32Array(Math.round(rate*.16)).fill(.25),silent=new Float32Array(128).fill(1);
+    processor.process([[data]],[[silent]]);assert.equal(output.length,2);assert.equal(output[0].length,Math.round(rate*.08));
+    assert.equal(output[0][0],.25);assert.equal(silent.some(Boolean),false);
+  }
+});
+test('worker resampling preserves timing and continuity for native 44.1 and 48 kHz blocks',()=>{
+  for(const rate of [44100,48000]){
+    const fresh=()=>{const ctx=vm.createContext({self:{},Float32Array});vm.runInContext(fs.readFileSync(path.join(root,'recognition-worker.js'),'utf8'),ctx);return ctx};
+    const whole=fresh(),chunked=fresh(),input=Float32Array.from({length:rate},(_,i)=>Math.sin(2*Math.PI*440*i/rate));
+    whole.input=input;whole.rate=rate;const expected=vm.runInContext('resample(input,rate)',whole),actual=[];
+    for(let i=0;i<input.length;i+=1280){chunked.input=input.subarray(i,i+1280);chunked.rate=rate;actual.push(...vm.runInContext('resample(input,rate)',chunked));}
+    assert.ok(Math.abs(actual.length-16000)<=1);assert.equal(actual.length,expected.length);
+    assert.ok(actual.every((value,i)=>Math.abs(value-expected[i])<.00001));
+  }
 });
