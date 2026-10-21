@@ -31,7 +31,8 @@ function harness({autoReady=true,autoDrain=true,sampleRate=48000,permission='gra
   for(const file of ['opencc-full.js','streaming-transcript.js','continuous-audio.js'])vm.runInContext(fs.readFileSync(path.join(root,file),'utf8'),context);
   const inline=[...fs.readFileSync(path.join(root,'index.html'),'utf8').matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/gi)].at(-1)[1];vm.runInContext(inline,context);
   return {query,workers,captures,contexts,constraints,tracks,spoken,context,get mediaRequests(){return mediaRequests},
-    click:()=>query('#mobileMicBtn').onclick(),
+    press:()=>query('#mobileMicBtn').onclick(),
+    async click(){await query('#mobileMicBtn').onclick();if(query('#statusText').textContent==='语音已就绪，请点击连接麦克风')await query('#mobileMicBtn').onclick();},
     audio(samples=new Float32Array(1280)){captures.at(-1).port.onmessage({data:samples})},
     advance(ms){now+=ms;for(const [key,item]of [...timers])if(item.due<=now){timers.delete(key);item.fn()}},
     evaluate:code=>vm.runInContext(code,context)};
@@ -90,9 +91,9 @@ test('microphone stop drains the tail before another session starts',async()=>{
   assert.match(app.query('#source').value,/最后一句/);assert.equal(app.mediaRequests,2);
 });
 
-test('canceling first preparation releases the context without opening a microphone',async()=>{
+test('canceling first preparation never opens an audio context or microphone',async()=>{
   const app=harness({autoReady:false});const starting=app.click();await new Promise(resolve=>setImmediate(resolve));app.click();await starting;
-  assert.equal(app.mediaRequests,0);assert.equal(app.workers[0].terminated,true);assert.equal(app.evaluate('listening'),false);
+  assert.equal(app.mediaRequests,0);assert.equal(app.contexts.length,0);assert.equal(app.workers[0].terminated,true);assert.equal(app.evaluate('listening'),false);
 });
 
 test('a failed model download can be retried with a fresh worker',async()=>{
@@ -101,9 +102,55 @@ test('a failed model download can be retried with a fresh worker',async()=>{
   assert.equal(app.mediaRequests,1);assert.equal(app.workers.length,2);
 });
 
-test('canceling immediately does not begin a model download',async()=>{
+test('canceling immediately terminates preparation without requesting the microphone',async()=>{
   const app=harness({autoReady:false});const pending=app.click();app.click();await pending;
-  assert.equal(app.workers.length,0);assert.equal(app.mediaRequests,0);
+  assert.equal(app.workers[0].terminated,true);assert.equal(app.mediaRequests,0);
+});
+
+test('preparing the model never silently opens hardware; the next click requests it synchronously',async()=>{
+  const app=harness();await app.press();
+  assert.equal(app.mediaRequests,0);assert.equal(app.contexts.length,0);assert.equal(app.evaluate('listening'),false);
+  assert.match(app.query('#statusText').textContent,/点击连接麦克风/);
+  const connection=app.press();assert.equal(app.mediaRequests,1);assert.equal(app.contexts.length,0);
+  await connection;assert.equal(app.contexts.length,1);
+});
+test('compatible input explicitly disables the communication audio processing constraints',async()=>{
+  const app=harness();app.query('#compatibleMic').checked=true;await app.click();
+  assert.equal(app.constraints[0].audio.echoCancellation,false);
+  assert.equal(app.constraints[0].audio.noiseSuppression,false);
+  assert.equal(app.constraints[0].audio.autoGainControl,false);
+  assert.equal(app.constraints[0].audio.channelCount,undefined);
+});
+test('raw microphone probe holds one input for five seconds with no model, graph, or playback',async()=>{
+  const app=harness();const probe=app.query('#testMicBtn').onclick();await settle();
+  assert.equal(app.mediaRequests,1);assert.equal(app.constraints[0].audio,true);
+  assert.equal(app.workers.length,0);assert.equal(app.contexts.length,0);assert.equal(app.spoken.length,0);
+  app.advance(5000);await probe;
+  assert.equal(app.tracks[0].stopped,true);assert.match(app.query('#statusText').textContent,/检测通过/);
+});
+test('raw probe identifies an independent device end, without reconnecting',async()=>{
+  const app=harness();const probe=app.query('#testMicBtn').onclick();await settle();app.tracks[0].emit('ended');await probe;
+  assert.equal(app.mediaRequests,1);assert.equal(app.contexts.length,0);assert.match(app.query('#statusText').textContent,/也被中断/);
+  assert.match(app.query('#micDiagnosticText').textContent,/raw-probe-ended/);
+});
+test('stopping a raw probe promptly releases the input and cancels its timer',async()=>{
+  const app=harness();const probe=app.evaluate('audio.probe()');await settle();app.evaluate('audio.stop()');await probe;
+  assert.equal(app.tracks[0].stopped,true);assert.equal(app.mediaRequests,1);
+});
+test('an ended-on-open track is distinguished from an ended graph and never creates Web Audio',async()=>{
+  const app=harness({endedOnOpen:true});await app.click();
+  assert.match(app.query('#micIssueText').textContent,/MIC_ENDED_OPEN/);assert.equal(app.contexts.length,0);
+});
+test('a device ended while loading the audio module is diagnosed as a pipeline-stage failure',async()=>{
+  const app=harness();const NativeContext=app.context.AudioContext;
+  app.context.AudioContext=class extends NativeContext{constructor(options){super(options);this.audioWorklet.addModule=async()=>app.tracks[0].emit('ended');}};
+  await app.click();assert.match(app.query('#micIssueText').textContent,/MIC_ENDED_WORKLET/);
+  assert.match(app.query('#micDiagnosticText').textContent,/track-ended/);assert.equal(app.evaluate('audio.recording'),false);
+});
+test('diagnostic export contains connection metadata but no private transcript or device identifier',async()=>{
+  const app=harness();await app.click();app.workers[0].result({text:'私人识别内容54803752',isFinal:true});app.audio();
+  const diagnostics=app.evaluate('audio.diagnosticText()');
+  assert.match(diagnostics,/first-audio-block/);assert.doesNotMatch(diagnostics,/私人|54803752|deviceId|groupId/);
 });
 
 test('late events from a canceled worker cannot mark a retry ready',async()=>{
@@ -177,7 +224,7 @@ test('permission and busy-device failures have distinct persistent instructions'
   for(const [name,expected]of [['NotAllowedError',/权限/],['NotReadableError',/占用/]]){
     const app=harness({mediaError:Object.assign(new Error('native error'),{name})});await app.click();
     assert.equal(app.query('#micIssue').hidden,false);assert.match(app.query('#micIssueText').textContent,expected);
-    assert.equal(app.contexts[0].state,'closed');
+    assert.equal(app.contexts.length,0);
   }
 });
 test('interrupted audio resumes the same context and stream from the recovery button',async()=>{

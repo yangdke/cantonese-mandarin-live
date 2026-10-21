@@ -24,6 +24,7 @@
     @media(max-width:370px){.hero{grid-template-columns:82px 1fr}.logo-wrap{width:80px;height:80px}.hero h1{font-size:1.35rem}.translator-card,.result-card,.extras-card{padding:15px}.opts{grid-template-columns:1fr}.opts #queueState{grid-column:auto}}
     .statusbar{gap:10px}.status{min-width:0;flex:1}#statusText{line-height:1.4;overflow-wrap:anywhere}#supportText{max-width:46%;text-align:right;line-height:1.4}
     .mic-issue{margin:0 14px 14px;padding:14px;border:1px solid #f7cfad;border-radius:16px;background:#fff2e2;font-size:.85rem;line-height:1.6;color:#79452a;overflow-wrap:anywhere}.mic-issue[hidden]{display:none}.mic-issue p{margin:0 0 9px}.mic-issue button{border:0;border-radius:10px;background:var(--orange);color:white;padding:9px 14px;font-weight:800}
+    .mic-issue .mic-actions{display:flex;flex-wrap:wrap;gap:8px}.mic-issue button.secondary{background:#fff9f0;color:#96502c;border:1px solid #edc6a5}.mic-issue details{margin-top:12px}.mic-issue pre{max-height:220px;overflow:auto;white-space:pre-wrap;font-size:11px;line-height:1.5}.compat-note{grid-column:1/-1;font-size:.78rem;color:var(--muted)}
   </style>
 </head>
 <body>
@@ -33,13 +34,13 @@
       <div><span class="eyebrow">入港通旗下</span><h1><strong>港言港语</strong> 粤语翻译</h1><p>听得懂 · 说得出 · 更融入香港</p></div>
     </header>
     <div class="statusbar"><div class="status"><span class="pulse" id="pulse"></span><span id="statusText">准备就绪</span></div><span id="supportText">正在检测语音支持…</span></div>
-    <div class="mic-issue" id="micIssue" role="status" hidden><p id="micIssueText"></p><button id="retryMicBtn" type="button">重试连接</button></div>
+    <div class="mic-issue" id="micIssue" role="status" hidden><p id="micIssueText"></p><div class="mic-actions"><button id="retryMicBtn" type="button">重试连接</button><button id="testMicBtn" class="secondary" type="button">检测麦克风（5秒）</button></div><details><summary>连接诊断（不含录音或识别文字）</summary><pre id="micDiagnosticText">尚未连接</pre><button id="copyDiagnosticBtn" class="secondary" type="button">复制诊断</button></details></div>
     <div class="stack" aria-label="粤语转普通话工作区">
       <section class="card translator-card">
         <div class="language-row"><div class="lang"><span class="lang-dot" aria-hidden="true"></span><span id="sourceLanguage">粤语</span><small id="sourceHint">广东话</small></div><button class="swap" id="swapBtn" type="button" aria-label="交换翻译方向" title="交换翻译方向">⇄</button><div class="lang target-lang"><span id="targetLanguage">普通话</span><span class="lang-dot" aria-hidden="true"></span></div></div>
         <div class="input-shell"><textarea id="source" aria-label="粤语输入" placeholder="请输入要翻译的内容…" spellcheck="false"></textarea><button class="mic mic-inline" id="micBtn" type="button" aria-label="开始说粤语"><span>▶</span><span id="micLabel">开始说粤语</span></button></div>
         <button class="primary" id="translateBtn" type="button">立即翻译</button>
-        <div class="opts"><label class="check"><input id="continuous" type="checkbox" checked> 连续聆听</label><label class="check"><input id="autoSpeak" type="checkbox" checked> 自动朗读结果</label><span id="queueState">逐句排队：空闲</span></div>
+        <div class="opts"><label class="check"><input id="continuous" type="checkbox" checked> 连续聆听</label><label class="check"><input id="autoSpeak" type="checkbox" checked> 自动朗读结果</label><label class="check"><input id="compatibleMic" type="checkbox"> 兼容收音</label><span class="compat-note">兼容模式关闭音频增强，建议戴耳机，避免朗读被再次识别。</span><span id="queueState">逐句排队：空闲</span></div>
       </section>
       <section class="card result-card">
         <div class="section-head"><div class="result-heading"><h2 class="section-title">翻译结果</h2><div class="output-toggle" id="outputToggle" role="group" aria-label="翻译结果类型"><button class="active" data-mode="simplified" type="button" aria-pressed="true">简</button><button data-mode="traditional" type="button" aria-pressed="false">繁</button><button data-mode="cantonese" type="button" aria-pressed="false">粤</button></div></div><button class="mini" id="clearBtn" type="button">清空</button></div>
@@ -49,7 +50,7 @@
       <section class="card extras-card">
         <div class="examples-title" id="examplesTitle">常用粤语短句</div>
         <div class="chips"><button class="chip">唔该，呢度点去地铁站？</button><button class="chip">我哋听日再倾啦</button><button class="chip">佢而家返紧工</button></div>
-        <div class="note"><b>提示</b><span>持续收音与朗读同时进行，无需 API 充值。首次使用需准备约 250 MB 本地语音文件，建议使用 Wi-Fi，准备完成后再说话。边听边读建议戴耳机，避免外放被再次识别；使用时保持页面在前台。</span></div>
+        <div class="note"><b>提示</b><span>持续收音与朗读同时进行，无需 API 充值。首次需准备约 250 MB 语音文件，建议使用 Wi-Fi。准备好后，请再点“连接麦克风”才开始说话。边听边读建议戴耳机；使用时保持页面在前台。</span></div>
       </section>
     </div>
   </main>
@@ -60,10 +61,11 @@
   <div class="toast" id="toast" role="status"></div>
   <script src="opencc-full.js"></script>
   <script src="streaming-transcript.js"></script>
-  <script src="continuous-audio.js?v=20261021-mic2"></script>
+  <script src="continuous-audio.js?v=20261021-mic3"></script>
   <script>
     const $=s=>document.querySelector(s); const source=$('#source'),result=$('#result'),micBtn=$('#micBtn'),micLabel=$('#micLabel'),mobileMicBtn=$('#mobileMicBtn'),mobileMicLabel=$('#mobileMicLabel'),pulse=$('#pulse'),statusText=$('#statusText'),supportText=$('#supportText'),swapBtn=$('#swapBtn'),sourceLanguage=$('#sourceLanguage'),targetLanguage=$('#targetLanguage'),sourceHint=$('#sourceHint'),outputToggle=$('#outputToggle'),examplesTitle=$('#examplesTitle');
-    let listening=false,preparing=false,timer,levelTimer;
+    let listening=false,preparing=false,probing=false,timer,levelTimer;
+    $('#compatibleMic').checked=/Android|HarmonyOS|HUAWEI/i.test(navigator.userAgent||'')||!!window.location?.search?.includes('capture=compatible');
     let speechQueue=[],speaking=false,direction='yue-to-zh',outputMode='simplified',voiceRetryCount=0,voiceRetryTimer=null,speechGeneration=0;
     let transcript=new StreamingTranscript();
     const phrases=[
@@ -119,21 +121,26 @@
     function showMicIssue(message){$('#micIssueText').textContent=message;$('#micIssue').hidden=false;}
     function microphoneError(error){clearTimeout(levelTimer);preparing=false;setListening(false);statusText.textContent='收音未连接';supportText.textContent='请查看下方提示';const messages={NotAllowedError:'麦克风权限未开启或被系统关闭。请在浏览器地址栏的网站权限及手机应用权限中允许麦克风，再重试。',NotReadableError:'麦克风暂时无法读取，可能被通话、录音或其他应用占用。请关闭占用后重试；如仍失败，请在系统 Chrome 或 Edge 浏览器中打开。',NotFoundError:'未找到可用麦克风。请检查手机麦克风或耳机是否可用。',OverconstrainedError:'当前设备不支持请求的音频设置，请断开蓝牙耳机后重试。'};const detail=messages[error.name]||error.message||'麦克风连接失败，请重试';showMicIssue(`${detail}（${error.code||error.name||'AUDIO_ERROR'}）`);toast('收音未连接，请查看页面上方的提示',2600);}
     function setListening(on){listening=on;[micBtn,mobileMicBtn].forEach(b=>b.classList.toggle('recording',on&&!preparing));pulse.classList.toggle('live',on&&!preparing);const label=on?'正在听…点击停止':`开始说${inputName()}`;micLabel.textContent=mobileMicLabel.textContent=label;[micBtn,mobileMicBtn].forEach(b=>b.setAttribute('aria-label',label));statusText.textContent=on?'持续收音·等待说话':speaking?`正在朗读${outputMode==='cantonese'?'粤语':'普通话'}`:'准备就绪'}
-    function handleStreamResult(data){const update=transcript.push(data);if(source.value!==update.text){source.value=update.text;render(update.text)}if($('#autoSpeak').checked)update.speech.map(translate).filter(Boolean).forEach(enqueueSpeech);if(data.isFinal&&data.text&&!$('#continuous').checked&&listening)stopListeningForSwitch()}
+    function handleStreamResult(data){const update=transcript.push(data);if(source.value!==update.text){source.value=update.text;render(update.text)}if($('#autoSpeak').checked&&!probing)update.speech.map(translate).filter(Boolean).forEach(enqueueSpeech);if(data.isFinal&&data.text&&!$('#continuous').checked&&listening)stopListeningForSwitch()}
     const audio=new ContinuousAudio({
       onResult:handleStreamResult,
       onStatus(info){
         if(info.phase==='preparing'){$('#micIssue').hidden=true;preparing=true;statusText.textContent='正在准备本地语音识别…';micLabel.textContent=mobileMicLabel.textContent='准备中…点击取消';[micBtn,mobileMicBtn].forEach(b=>b.setAttribute('aria-label','准备中…点击取消'));supportText.textContent='首次约 250 MB，建议 Wi-Fi';}
         else if(info.type==='progress'&&preparing){statusText.textContent=`正在准备语音文件 ${info.percent}%`;}
-        else if(info.phase==='permission'){transcript=new StreamingTranscript(source.value.trim());statusText.textContent='正在连接麦克风…';}
+        else if(info.phase==='awaiting-gesture'){preparing=false;setListening(false);statusText.textContent='语音已就绪，请点击连接麦克风';supportText.textContent='连接后再开始说话';micLabel.textContent=mobileMicLabel.textContent='连接麦克风，开始说话';[micBtn,mobileMicBtn].forEach(b=>b.setAttribute('aria-label','连接麦克风，开始说话'));}
+        else if(info.phase==='permission'){$('#micIssue').hidden=true;transcript=new StreamingTranscript(source.value.trim());statusText.textContent='正在连接麦克风…';micLabel.textContent=mobileMicLabel.textContent='连接中…点击取消';}
         else if(info.phase==='listening'){$('#micIssue').hidden=true;preparing=false;setListening(true);supportText.textContent='本地识别·收音不中断';}
         else if(info.phase==='recovering'){clearTimeout(levelTimer);statusText.textContent='正在恢复麦克风连接…';supportText.textContent='仅尝试一次，不循环重连';}
         else if(info.phase==='suspended'){clearTimeout(levelTimer);preparing=false;statusText.textContent='收音被系统暂停';supportText.textContent='请保持页面在前台';showMicIssue('音频被手机系统暂停。请返回此页面，点击“恢复收音”；无需重新下载语音文件。');$('#retryMicBtn').textContent='恢复收音';}
         else if(info.phase==='muted'){clearTimeout(levelTimer);preparing=false;statusText.textContent='麦克风暂时被系统静音';supportText.textContent='连接保留，等待恢复';}
+        else if(info.phase==='probe-start'){statusText.textContent='正在检测原始麦克风连接…';showMicIssue('正在进行 5 秒原始连接检测：不加载识别模型、不播放声音、不保存录音。');}
+        else if(info.phase==='probe-passed'){statusText.textContent='原始麦克风连接检测通过';showMicIssue('原始麦克风音轨已保持连接 5 秒。这只确认连接未中断，不代表识别已成功。请开启“兼容收音”后点击开始；若仍失败，请复制下面的连接诊断发给我。');}
+        else if(info.phase==='probe-failed'){statusText.textContent='原始麦克风连接也被中断';showMicIssue('在未加载识别和播放链路的独立检测中，麦克风音轨也被中断了。请复制下面的连接诊断，便于定位浏览器或系统层问题。');}
         else if(info.phase==='cache-warning'){supportText.textContent='缓存空间不足，下次需重新准备';}
       },
       onLevel(level){if(!listening||preparing||audio.recovering||audio.context?.state!=='running'||audio.media?.getAudioTracks().some(track=>track.muted))return;if(level>.007){statusText.textContent=speaking?'正在识别·同时朗读':`正在识别${inputName()}`;clearTimeout(levelTimer);levelTimer=setTimeout(()=>{if(listening)updateQueue()},450)}},
-      onError:microphoneError
+      onError:microphoneError,
+      onDiagnostic(text){$('#micDiagnosticText').textContent=text}
     });
     const examples={
       'yue-to-zh':['唔该，呢度点去地铁站？','我哋听日再倾啦','佢而家返紧工'],
@@ -145,8 +152,10 @@
     function stopListeningForSwitch(){preparing=false;clearTimeout(levelTimer);$('#micIssue').hidden=true;setListening(false);return audio.stop()}
     function cancelSpeechQueue(){speechGeneration++;clearTimeout(voiceRetryTimer);speechQueue=[];speaking=false;voiceRetryCount=0;speechSynthesis.cancel();updateQueue()}
     async function swapDirection(){swapBtn.disabled=true;try{await stopListeningForSwitch();const previous=translate(source.value);direction=direction==='yue-to-zh'?'zh-to-yue':'yue-to-zh';outputMode=direction==='yue-to-zh'?'simplified':'cantonese';source.value=previous;transcript=new StreamingTranscript(previous);refreshDirectionUi();render(source.value);cancelSpeechQueue();toast(direction==='zh-to-yue'?'已切换：普通话翻译成粤语':'已切换：粤语翻译成普通话')}finally{swapBtn.disabled=false}}
-    async function toggleListening(){if(listening||preparing){stopListeningForSwitch();return}preparing=true;setListening(true);$('#retryMicBtn').textContent='重试连接';try{const started=await audio.start();if(!started)return;}catch(error){if(error.message==='已取消准备')return;microphoneError(error)}}micBtn.onclick=toggleListening;mobileMicBtn.onclick=toggleListening;
+    async function toggleListening(){if(probing)return;if(listening||preparing){stopListeningForSwitch();return}preparing=true;setListening(true);$('#retryMicBtn').textContent='重试连接';try{const started=await audio.start({compatible:$('#compatibleMic').checked});if(!started)return;}catch(error){if(error.message==='已取消准备')return;microphoneError(error)}}micBtn.onclick=toggleListening;mobileMicBtn.onclick=toggleListening;
     $('#retryMicBtn').onclick=async()=>{if(audio.recording){try{await audio.resume()}catch(error){showMicIssue(`暂时无法恢复收音，请停止后重新开始。（${error.name}）`)}}else await toggleListening()};
+    $('#testMicBtn').onclick=async()=>{if(probing)return;stopListeningForSwitch();cancelSpeechQueue();probing=true;$('#testMicBtn').disabled=true;try{await audio.probe()}catch(error){audio.log('probe-failed',{code:error.code||error.name});microphoneError(error)}finally{probing=false;$('#testMicBtn').disabled=false}};
+    $('#copyDiagnosticBtn').onclick=async()=>{try{await navigator.clipboard.writeText(audio.diagnosticText());toast('已复制连接诊断，不含录音和识别文字')}catch(_){toast('复制失败，请展开诊断并截图')}};
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&audio.recording&&['suspended','interrupted'].includes(audio.context?.state))audio.resume().catch(()=>showMicIssue('请点击“恢复收音”，恢复被手机暂停的音频。'))});
     let debounce;source.addEventListener('input',()=>{audio.reset();transcript=new StreamingTranscript(source.value);clearTimeout(debounce);debounce=setTimeout(()=>render(source.value),80)});
     function stopSpeech(){cancelSpeechQueue();toast('已停止朗读，收音继续')}$('#translateBtn').onclick=()=>{const t=render(source.value);if(t&&$('#autoSpeak').checked)enqueueSpeech(t)};$('#speakBtn').onclick=()=>speak();$('#stopSpeakBtn').onclick=stopSpeech;$('#mobileStopBtn').onclick=stopSpeech;
