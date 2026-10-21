@@ -1,0 +1,48 @@
+{
+  "version": "1.12.28",
+  "model": "streaming-paraformer-trilingual-zh-cantonese-en",
+  "origin": "https://github.com/k2-fsa/sherpa-onnx/releases/tag/v1.12.28",
+  "bytes": 238509671,
+  "parts": [
+    {
+      "name": "paraformer-1.bin",
+      "bytes": 33554432,
+      "sha256": "ecab38601f1609033aae55c9ebe699c3135d6ddf70aec5ed0cdba0b839d1f987"
+    },
+    {
+      "name": "paraformer-2.bin",
+      "bytes": 33554432,
+      "sha256": "726e12e66345fe1decd8dcad3cf3db01bc19be9acdc3c4d88b82822af30899f9"
+    },
+    {
+      "name": "paraformer-3.bin",
+      "bytes": 33554432,
+      "sha256": "eafdacdb8381a1362c9c0d7efbfb8904c7f82d33ab073bdeb5c6bfc74383d544"
+    },
+    {
+      "name": "paraformer-4.bin",
+      "bytes": 33554432,
+      "sha256": "cc63680cf14dd89d119bf7dee5b1f31ca96211121463e88c55d117a137727a7c"
+    },
+    {
+      "name": "paraformer-5.bin",
+      "bytes": 33554432,
+      "sha256": "e8a778aa9649bc5341557f1ba5e1c90fbfde4f61694a8aba334644d394a0de10"
+    },
+    {
+      "name": "paraformer-6.bin",
+      "bytes": 33554432,
+      "sha256": "8dc78aa55854a7e0405140d03d18049449317f239ef36148ab5809e989845783"
+    },
+    {
+      "name": "paraformer-7.bin",
+      "bytes": 33554432,
+      "sha256": "cbd3b9ef53218aec6f3ec3843c5ec253b983a5668ee2f75e3e4333a02d9776ea"
+    },
+    {
+      "name": "paraformer-8.bin",
+      "bytes": 3628647,
+      "sha256": "c31f54339099aaaaf0e087e8ee0fd6dd9928ef783ff10977596814faf360db79"
+    }
+  ]
+}
